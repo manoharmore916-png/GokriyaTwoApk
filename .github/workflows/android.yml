@@ -35,18 +35,20 @@ jobs:
           if [ -f "source/package.json" ]; then
             echo "PROJECT_DIR=source" >> $GITHUB_ENV
           else
-            ROOT=$(find source -name package.json -type f -printf '%h\n' | head -1)
+            ROOT=$(find source -name package.json -type f -print -quit | xargs dirname)
             echo "PROJECT_DIR=$ROOT" >> $GITHUB_ENV
           fi
 
       - name: Prepare app
         run: |
           cd "$PROJECT_DIR"
+
           rm -rf www
           mkdir -p www
 
           if [ ! -f "${{ matrix.app }}/index.html" ]; then
             echo "ERROR: ${{ matrix.app }}/index.html not found"
+            find . -maxdepth 3 -type f | sort
             exit 1
           fi
 
