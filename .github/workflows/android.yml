@@ -41,15 +41,22 @@ jobs:
           fi
 
       - name: Prepare app
-        run: |
-          cd "$PROJECT_DIR"
+  run: |
+    cd "$PROJECT_DIR"
 
-          rm -rf www
-          mkdir -p www
+    rm -rf www
+    mkdir -p www
 
-          cp "$GITHUB_WORKSPACE/$PROJECT_DIR/${{ matrix.app }}/index.html" www/index.html
+    if [ ! -f "${{ matrix.app }}/index.html" ]; then
+      echo "ERROR: ${{ matrix.app }}/index.html not found"
+      echo "Project contents:"
+      find . -maxdepth 3 -type f | sort
+      exit 1
+    fi
 
-          npm install
+    cp "${{ matrix.app }}/index.html" www/index.html
+
+    npm install
 
       - name: Add Android platform
         run: |
