@@ -1,0 +1,74 @@
+name: Build Gokriya APKs
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        app:
+          - franchise
+          - plant
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Extract source ZIP
+        run: |
+          mkdir source
+          unzip -q GokriyaTwoAPK-Fixed.zip -d source
+
+          echo "Extracted files:"
+          find source -maxdepth 3 -type f | head -100
+
+      - name: Find project root
+        run: |
+          if [ -f "source/package.json" ]; then
+            echo "PROJECT_DIR=source" >> $GITHUB_ENV
+          else
+            ROOT=$(find source -name package.json -type f | head -1 | xargs dirname)
+            echo "PROJECT_DIR=$ROOT" >> $GITHUB_ENV
+          fi
+
+      - name: Prepare app
+        run: |
+          cd "$PROJECT_DIR"
+
+          rm -rf www
+          mkdir -p www
+
+          cp "$GITHUB_WORKSPACE/$PROJECT_DIR/${{ matrix.app }}/index.html" www/index.html
+
+          npm install
+
+      - name: Add Android platform
+        run: |
+          cd "$PROJECT_DIR"
+          npx cap add android
+
+      - name: Copy web assets
+        run: |
+          cd "$PROJECT_DIR"
+          npx cap copy android
+
+      - name: Build debug APK
+        run: |
+          cd "$PROJECT_DIR/android"
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gokriya-${{ matrix.app }}-APK
+          path: ${{ env.PROJECT_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
