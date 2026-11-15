@@ -24,16 +24,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: Setup Java 17
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '21'
 
       - name: Extract source ZIP
         run: |
-          mkdir source
+          mkdir -p source
           unzip -q GokriyaTwoAPK-Fixed.zip -d source
 
       - name: Find project root
@@ -60,14 +61,12 @@ jobs:
 
           cp "${{ matrix.app }}/index.html" www/index.html
 
-      - name: Install dependencies
-        run: |
-          cd "$PROJECT_DIR"
           npm install
 
       - name: Add Android platform
         run: |
           cd "$PROJECT_DIR"
+          rm -rf android
           npx cap add android
 
       - name: Copy web assets
@@ -79,7 +78,7 @@ jobs:
         run: |
           cd "$PROJECT_DIR/android"
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
