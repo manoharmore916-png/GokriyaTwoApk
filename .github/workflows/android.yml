@@ -1,0 +1,47 @@
+name: Build Gokriya APKs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - app: franchise
+            label: Franchise
+          - app: plant
+            label: Plant
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Prepare app
+        run: |
+          rm -rf www
+          mkdir -p www
+          cp ${{ matrix.app }}/index.html www/index.html
+          node -e "const fs=require('fs'); let p=require('./package.json'); p.name='gokriya-${{ matrix.app }}'; fs.writeFileSync('package.json', JSON.stringify(p,null,2))"
+          npm install
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Copy web assets
+        run: npx cap copy android
+
+      - name: Build debug APK
+        run: cd android && ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gokriya-${{ matrix.label }}-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
