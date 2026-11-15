@@ -1,6 +1,7 @@
 name: Build Gokriya APKs
 
 on:
+  push:
   workflow_dispatch:
 
 jobs:
