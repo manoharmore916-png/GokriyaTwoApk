@@ -48,20 +48,16 @@ jobs:
           find source -maxdepth 3 -type f -print
 
       - name: Find project root
-        run: |
-          set -e
+  run: |
+    set -e
 
-          if [ -f "source/package.json" ] && [ -d "source/${{ matrix.app }}" ]; then
-            echo "PROJECT_ROOT=source" >> "$GITHUB_ENV"
-
-          elif [ -f "source/GokriyaTwoAPK/package.json" ] && [ -d "source/GokriyaTwoAPK/${{ matrix.app }}" ]; then
-            echo "PROJECT_ROOT=source/GokriyaTwoAPK" >> "$GITHUB_ENV"
-
-          else
-            echo "ERROR: Could not find project root"
-            find source -maxdepth 3 -type f -print
-            exit 1
-          fi
+    if [ -f "source/gokriya_source/package.json" ] && [ -d "source/gokriya_source/${{ matrix.app }}" ]; then
+      echo "PROJECT_ROOT=source/gokriya_source" >> "$GITHUB_ENV"
+    else
+      echo "ERROR: Could not find project root"
+      find source -maxdepth 4 -type f -print
+      exit 1
+    fi
 
       - name: Prepare app
         run: |
