@@ -109,7 +109,7 @@ jobs:
       - name: Add Android platform
         run: |
           cd "$PROJECT_ROOT"
-          npx cap add android --no-interactive
+          npx cap add android
 
       - name: Ensure Android internet permission
         run: |
