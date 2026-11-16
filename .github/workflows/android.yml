@@ -1,0 +1,141 @@
+name: Build Gokriya APKs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - app: franchise
+            label: Franchise
+            appId: com.gokriya.franchise
+            appName: Gokriya Franchise
+
+          - app: plant
+            label: Plant
+            appId: com.gokriya.plant
+            appName: Gokriya Plant
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Extract source ZIP
+        run: |
+          set -e
+          ZIP="GokriyaTwoAPK-Fixed.zip"
+
+          test -f "$ZIP" || {
+            echo "ERROR: $ZIP not found"
+            ls -la
+            exit 1
+          }
+
+          rm -rf source
+          mkdir source
+          unzip -o "$ZIP" -d source
+
+          echo "Extracted files:"
+          find source -maxdepth 3 -type f -print
+
+      - name: Find project root
+        run: |
+          set -e
+
+          if [ -f "source/package.json" ] && [ -d "source/${{ matrix.app }}" ]; then
+            echo "PROJECT_ROOT=source" >> "$GITHUB_ENV"
+
+          elif [ -f "source/GokriyaTwoAPK/package.json" ] && [ -d "source/GokriyaTwoAPK/${{ matrix.app }}" ]; then
+            echo "PROJECT_ROOT=source/GokriyaTwoAPK" >> "$GITHUB_ENV"
+
+          else
+            echo "ERROR: Could not find project root"
+            find source -maxdepth 3 -type f -print
+            exit 1
+          fi
+
+      - name: Prepare app
+        run: |
+          set -e
+
+          cd "$PROJECT_ROOT"
+
+          rm -rf www android
+          mkdir -p www
+
+          cp "${{ matrix.app }}/index.html" www/index.html
+
+          cat > capacitor.config.json <<EOF
+          {
+            "appId": "${{ matrix.appId }}",
+            "appName": "${{ matrix.appName }}",
+            "webDir": "www",
+            "server": {
+              "androidScheme": "https"
+            }
+          }
+          EOF
+
+      - name: Install dependencies
+        run: |
+          cd "$PROJECT_ROOT"
+          npm install
+
+      - name: Add Android platform
+        run: |
+          cd "$PROJECT_ROOT"
+          npx cap add android
+
+      - name: Ensure Android internet permission
+        run: |
+          cd "$PROJECT_ROOT"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+
+          perm = '<uses-permission android:name="android.permission.INTERNET" />'
+
+          if perm not in s:
+              s = s.replace(
+                  "<manifest",
+                  "<manifest\n    " + perm,
+                  1
+              )
+
+          p.write_text(s)
+          PY
+
+      - name: Copy web assets
+        run: |
+          cd "$PROJECT_ROOT"
+          npx cap copy android
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_ROOT/android"
+          ./gradlew assembleDebug
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+
+          cp "$PROJECT_ROOT/android/app/build/outputs/apk/debug/app-debug.apk" \
+             "dist/Gokriya-${{ matrix.label }}.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gokriya-${{ matrix.label }}-APK
+          path: dist/Gokriya-${{ matrix.label }}.apk
